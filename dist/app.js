@@ -9,12 +9,38 @@ function autoBind(_t, _m, descriptor) {
     const originMethod = descriptor.value;
     const adjustedMethod = {
         get() {
-            const BoundFun = originMethod.bind(this);
-            return BoundFun;
+            const boundFun = originMethod.bind(this);
+            return boundFun;
         },
     };
     return adjustedMethod;
 }
+function validate(validateInput) {
+    let isValid = true;
+    if (validateInput.required) {
+        isValid = isValid && validateInput.value.toString().trim().length !== 0;
+    }
+    if (validateInput.maxLength != null &&
+        typeof validateInput.value === "string") {
+        isValid = isValid && validateInput.maxLength >= validateInput.value.length;
+    }
+    if (validateInput.minLength != null &&
+        typeof validateInput.value === "string") {
+        isValid = isValid && validateInput.minLength <= validateInput.value.length;
+    }
+    if (validateInput.min != null && typeof validateInput.value === "number") {
+        isValid = isValid && validateInput.min <= validateInput.value;
+    }
+    if (validateInput.max != null && typeof validateInput.value === "number") {
+        isValid = isValid && validateInput.max >= validateInput.value;
+    }
+    return isValid;
+}
+//Project List
+class ProjectList {
+    constructor() { }
+}
+//Project Inputs
 class ProjectInput {
     constructor() {
         this.templateElement = document.getElementById("project-input");
@@ -37,9 +63,24 @@ class ProjectInput {
         const enteredTitle = this.titleInputEle.value;
         const enteredDescription = this.descriptionInputEle.value;
         const enteredPeople = this.peopleInputEle.value;
-        if (enteredTitle.trim().length === 0 ||
-            enteredDescription.trim().length === 0 ||
-            enteredPeople.trim().length === 0) {
+        const titleValidate = {
+            value: enteredTitle,
+            required: true,
+        };
+        const descriptionValidate = {
+            value: enteredDescription,
+            required: true,
+            minLength: 5,
+        };
+        const peopleValidate = {
+            value: +enteredPeople,
+            required: true,
+            min: 1,
+            max: 5,
+        };
+        if (!validate(titleValidate) &&
+            !validate(descriptionValidate) &&
+            !validate(peopleValidate)) {
             alert("Invalid inputs.");
             return;
         }

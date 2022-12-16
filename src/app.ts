@@ -1,14 +1,64 @@
+interface ValidateInterface {
+  value: string | number;
+  required?: boolean;
+  maxLength?: number;
+  minLength?: number;
+  max?: number;
+  min?: number;
+}
+
 function autoBind(_t: any, _m: string, descriptor: PropertyDescriptor) {
   const originMethod = descriptor.value;
   const adjustedMethod: PropertyDescriptor = {
     get() {
-      const BoundFun = originMethod.bind(this);
-      return BoundFun;
+      const boundFun = originMethod.bind(this);
+      return boundFun;
     },
   };
   return adjustedMethod;
 }
 
+function validate(validateInput: ValidateInterface) {
+  let isValid = true;
+  if (validateInput.required) {
+    isValid = isValid && validateInput.value.toString().trim().length !== 0;
+  }
+
+  if (
+    validateInput.maxLength != null &&
+    typeof validateInput.value === "string"
+  ) {
+    isValid = isValid && validateInput.maxLength >= validateInput.value.length;
+  }
+
+  if (
+    validateInput.minLength != null &&
+    typeof validateInput.value === "string"
+  ) {
+    isValid = isValid && validateInput.minLength <= validateInput.value.length;
+  }
+
+  if (validateInput.min != null && typeof validateInput.value === "number") {
+    isValid = isValid && validateInput.min <= validateInput.value;
+  }
+
+  if (validateInput.max != null && typeof validateInput.value === "number") {
+    isValid = isValid && validateInput.max >= validateInput.value;
+  }
+
+  return isValid;
+}
+
+//Project List
+class ProjectList {
+  templateElement: HTMLTemplateElement;
+  hostElement: HTMLElement;
+  element: HTMLElement;
+
+  constructor() {}
+}
+
+//Project Inputs
 class ProjectInput {
   templateElement: HTMLTemplateElement;
   hostElement: HTMLElement;
@@ -51,15 +101,33 @@ class ProjectInput {
     this.peopleInputEle.value = "";
   }
 
-  private getUserInput(): [string, string, number] | undefined {
+  private getUserInput(): [string, string, number] | void {
     const enteredTitle = this.titleInputEle.value;
     const enteredDescription = this.descriptionInputEle.value;
     const enteredPeople = this.peopleInputEle.value;
 
+    const titleValidate: ValidateInterface = {
+      value: enteredTitle,
+      required: true,
+    };
+
+    const descriptionValidate: ValidateInterface = {
+      value: enteredDescription,
+      required: true,
+      minLength: 5,
+    };
+
+    const peopleValidate: ValidateInterface = {
+      value: +enteredPeople,
+      required: true,
+      min: 1,
+      max: 5,
+    };
+
     if (
-      enteredTitle.trim().length === 0 ||
-      enteredDescription.trim().length === 0 ||
-      enteredPeople.trim().length === 0
+      !validate(titleValidate) &&
+      !validate(descriptionValidate) &&
+      !validate(peopleValidate)
     ) {
       alert("Invalid inputs.");
       return;
