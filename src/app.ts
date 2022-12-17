@@ -1,3 +1,18 @@
+enum ProjectStatus {
+  Active,
+  Finished,
+}
+
+class Project {
+  constructor(
+    public id: string,
+    public title: string,
+    public description: string,
+    public numOfPeople: number,
+    public status: ProjectStatus
+  ) {}
+}
+
 interface ValidateInterface {
   value: string | number;
   required?: boolean;
@@ -6,6 +21,47 @@ interface ValidateInterface {
   max?: number;
   min?: number;
 }
+
+type Listener = (items: Project[]) => void;
+
+//Project State Management
+class State {
+  private listener: Listener[] = [];
+  private projects: Project[] = [];
+  private static instance: State;
+
+  private constructor() {}
+
+  static getInstance() {
+    if (this.instance) {
+      return this.instance;
+    }
+
+    this.instance = new State();
+    return this.instance;
+  }
+
+  addListener(listenerFn: Listener) {
+    this.listener.push(listenerFn);
+  }
+
+  addProject(title: string, description: string, numOfPeople: number) {
+    const newProject = new Project(
+      Math.random().toString(),
+      title,
+      description,
+      numOfPeople,
+      ProjectStatus.Active
+    );
+
+    this.projects.push(newProject);
+    for (const listenerFn of this.listener) {
+      listenerFn(this.projects.slice());
+    }
+  }
+}
+
+const state = State.getInstance();
 
 function autoBind(_t: any, _m: string, descriptor: PropertyDescriptor) {
   const originMethod = descriptor.value;
@@ -49,13 +105,73 @@ function validate(validateInput: ValidateInterface) {
   return isValid;
 }
 
+//Component Base Class
+class Component {
+  templateElement: HTMLTemplateElement;
+  hostElement: HTMLElement;
+  element: HTMLElement;
+}
+
 //Project List
 class ProjectList {
   templateElement: HTMLTemplateElement;
   hostElement: HTMLElement;
   element: HTMLElement;
+  assignedProject: Project[];
 
-  constructor() {}
+  constructor(private type: "active" | "finished") {
+    this.templateElement = document.getElementById(
+      "project-list"
+    )! as HTMLTemplateElement;
+    this.hostElement = document.getElementById("app")! as HTMLDivElement;
+    const importedNode = document.importNode(
+      this.templateElement.content,
+      true
+    );
+
+    this.assignedProject = [];
+    this.element = importedNode.firstElementChild as HTMLFormElement;
+    this.element.id = `${this.type}-projects`;
+
+    state.addListener((projects: Project[]) => {
+      const relatedProjects = projects.filter((project) => {
+        if (this.type === "active") {
+          return project.status === ProjectStatus.Active;
+        } else {
+          return project.status === ProjectStatus.Finished;
+        }
+      });
+      this.assignedProject = relatedProjects;
+      this.renderProjectList();
+    });
+
+    this.attach();
+    this.renderContent();
+  }
+
+  private renderProjectList() {
+    const listEl = document.getElementById(
+      `${this.type}-projects-list`
+    )! as HTMLUListElement;
+    listEl.innerHTML = "";
+    for (const projectItem of this.assignedProject) {
+      const listItem = document.createElement("li");
+      listItem.textContent = projectItem.title;
+      listEl?.appendChild(listItem);
+    }
+  }
+
+  private renderContent() {
+    const listId = `${this.type}-projects-list`;
+    this.element.querySelector("ul")!.id = listId;
+    this.element.querySelector(
+      "h2"
+    )!.textContent = `${this.type.toUpperCase()} PROJECT`;
+  }
+
+  private attach() {
+    this.hostElement.insertAdjacentElement("beforeend", this.element);
+  }
 }
 
 //Project Inputs
@@ -142,10 +258,7 @@ class ProjectInput {
     const userInput = this.getUserInput();
     if (Array.isArray(userInput)) {
       const [title, des, people] = userInput;
-
-      console.log(title);
-      console.log(des);
-      console.log(people);
+      state.addProject(title, des, people);
       this.handleClearInput();
     }
   }
@@ -160,3 +273,5 @@ class ProjectInput {
 }
 
 const project = new ProjectInput();
+const activeProjectList = new ProjectList("active");
+const finishedProjectList = new ProjectList("finished");
